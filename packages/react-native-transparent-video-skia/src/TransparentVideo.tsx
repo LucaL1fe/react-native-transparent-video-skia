@@ -22,6 +22,8 @@ export interface TransparentVideoProps {
   width: number;
   /** Display height (half the packed video's pixel height). */
   height: number;
+  /** Loop playback (default true). Set false for one-shot animations. */
+  loop?: boolean;
   paused?: SharedValue<boolean> | boolean;
   style?: StyleProp<ViewStyle>;
 }
@@ -108,12 +110,13 @@ export function TransparentVideo({
   source,
   width,
   height,
+  loop = true,
   paused = false,
   style,
 }: TransparentVideoProps) {
   const uri = useResolvedUri(source);
 
-  const { currentFrame } = useVideo(uri, { looping: true, paused });
+  const { currentFrame } = useVideo(uri, { looping: loop, paused });
 
   return (
     <Canvas style={[{ width, height }, style]}>

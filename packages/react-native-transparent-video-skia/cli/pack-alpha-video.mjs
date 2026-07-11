@@ -21,6 +21,8 @@
  *       --quality <0-100>  quality in percent, 75 ≈ visually lossless (default: 75)
  *       --scale <percent>  resize to this % of the source size    (default: 100)
  *       --width <px>       or: resize to exact width, keeps aspect
+ *       --size <WxH>       or: exact output frame from any aspect ratio —
+ *                          scales to fit and pads with TRANSPARENT pixels
  *       --crf <n>          advanced: raw x264 CRF, overrides --quality
  *
  * Output: <out-dir>/<name>-packed.mp4 (a trailing "-4444" is stripped from
@@ -55,6 +57,7 @@ try {
       quality: { type: 'string', default: '75' },
       scale: { type: 'string', default: '' },
       width: { type: 'string', default: '' },
+      size: { type: 'string', default: '' },
       crf: { type: 'string', default: '' },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -72,6 +75,7 @@ if (values.help || inputs.length === 0) {
       --quality <0-100>  quality %, 75 ≈ visually lossless   (default: 75)
       --scale <percent>  resize to % of source size          (default: 100)
       --width <px>       or: exact output width, keeps aspect
+      --size <WxH>       or: exact frame (e.g. 900x900) — fits + transparent padding
       --crf <n>          advanced: raw x264 CRF, overrides --quality`
   );
   process.exit(values.help ? 0 : 1);
@@ -89,6 +93,15 @@ const CRF = values.crf !== '' ? values.crf : String(Math.round(30 - quality * 0.
 const scalePct = values.scale !== '' ? Number(values.scale) : 100;
 if (Number.isNaN(scalePct) || scalePct <= 0 || scalePct > 400) {
   fail(`--scale must be a percentage between 1 and 400, got: ${values.scale}`);
+}
+
+let sizeW = 0;
+let sizeH = 0;
+if (values.size !== '') {
+  const m = values.size.match(/^(\d+)x(\d+)$/i);
+  if (!m) fail(`--size must look like 900x900, got: ${values.size}`);
+  sizeW = 2 * Math.round(Number(m[1]) / 2);
+  sizeH = 2 * Math.round(Number(m[2]) / 2);
 }
 
 // ---- preflight ------------------------------------------------------------
@@ -131,23 +144,34 @@ for (const input of inputs) {
     );
   }
 
-  const name = path.basename(input, path.extname(input)).replace(/-4444$/, '');
+  // Strip a "4444" token anywhere in the name: raccoon-4444-idle → raccoon-idle
+  const name = path
+    .basename(input, path.extname(input))
+    .replace(/(^|-)4444(?=-|$)/g, '$1')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '');
   const outFile = path.join(OUT_DIR, `${name}-packed.mp4`);
 
-  // Scale expression: exact width, percentage, or a no-op even-ing pass —
-  // yuv420p + vstack require even dimensions, and any source resolution is
-  // allowed, including odd ones.
-  const scale = values.width
-    ? `scale=${values.width}:-2,`
-    : scalePct !== 100
-      ? `scale=trunc(iw*${scalePct / 100}/2)*2:-2,`
-      : 'scale=trunc(iw/2)*2:-2,';
+  // Resize stage (runs in rgba so padding can be transparent):
+  //  --size:  scale to fit the exact frame, pad the rest with TRANSPARENT
+  //           pixels (alpha 0) — never stretches, works for any aspect ratio
+  //  --width: exact width, height follows aspect
+  //  --scale: percentage of source
+  //  default: no-op even-ing pass (yuv420p + vstack need even dimensions)
+  const resize = sizeW
+    ? `scale=${sizeW}:${sizeH}:force_original_aspect_ratio=decrease:force_divisible_by=2,` +
+      `pad=${sizeW}:${sizeH}:(ow-iw)/2:(oh-ih)/2:color=black@0,`
+    : values.width
+      ? `scale=${values.width}:-2,`
+      : scalePct !== 100
+        ? `scale=trunc(iw*${scalePct / 100}/2)*2:-2,`
+        : 'scale=trunc(iw/2)*2:-2,';
 
-  // fps → premultiply color by alpha (kills edge fringe when the shader
-  // samples with bilinear filtering) → split → alphaextract paints the alpha
-  // as grayscale → vstack glues color above matte into one tall frame.
+  // fps → resize → premultiply color by alpha (kills edge fringe when the
+  // shader samples with bilinear filtering) → split → alphaextract paints the
+  // alpha as grayscale → vstack glues color above matte into one tall frame.
   const filter =
-    `[0:v]fps=${FPS},${scale}format=rgba,premultiply=inplace=1,format=rgba,` +
+    `[0:v]fps=${FPS},format=rgba,${resize}premultiply=inplace=1,format=rgba,` +
     `split[c][a];[a]alphaextract[m];[c][m]vstack`;
 
   console.log(

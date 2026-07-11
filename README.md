@@ -50,6 +50,7 @@ npx pack-alpha-video <input-with-alpha> [more inputs ...] [options]
 | `--quality <0-100>` | `75` | Output quality in percent. 75 ≈ visually lossless; lower = smaller file. |
 | `-o, --out-dir <dir>` | cwd | Where to write `<name>-packed.mp4`. |
 | `--width <px>` | — | Alternative to `--scale`: resize to an exact pixel width (keeps aspect ratio). |
+| `--size <WxH>` | — | Force an exact output frame (e.g. `--size 900x900`) from **any** aspect ratio: content is scaled to fit and the remainder is padded with **transparent** pixels — never stretched. |
 | `--crf <n>` | — | Advanced: raw x264 CRF value, overrides `--quality`. |
 
 **Supported inputs** — any video with a real alpha channel, at any resolution (odd dimensions are handled automatically):
@@ -119,6 +120,7 @@ Because the transport is plain `yuv420p` H.264, the OS hardware decoder does all
 | `source` | `number \| string` | `require(...)` of a packed MP4, or a URI string. Asset modules resolve via `expo-asset` when installed, otherwise via `Image.resolveAssetSource` (bare RN). |
 | `width` | `number` | Display width. |
 | `height` | `number` | Display height (= half the packed video's pixel height). |
+| `loop` | `boolean` | Loop playback (default `true`). Set `false` for one-shot animations. |
 | `paused` | `boolean \| SharedValue<boolean>` | Pause playback; accepts a Reanimated shared value for UI-thread control. |
 | `style` | `StyleProp<ViewStyle>` | Extra styles for the canvas. |
 
