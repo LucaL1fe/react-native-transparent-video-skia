@@ -6,7 +6,7 @@
   "author": "LucaL1fe",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LucaL1fe/react-native-transparent-video-skia.git",
+    "url": "git+https://github.com/LucaL1fe/react-native-transparent-video-skia.git",
     "directory": "packages/react-native-transparent-video-skia"
   },
   "homepage": "https://lucal1fe.github.io/react-native-transparent-video-skia/",

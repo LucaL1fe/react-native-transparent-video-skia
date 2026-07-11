@@ -122,7 +122,9 @@
       <p class="muted">
         Runs entirely client-side via <a href="https://github.com/ffmpegwasm/ffmpeg.wasm" target="_blank" rel="noreferrer">ffmpeg.wasm</a>
         (FFmpeg + x264, GPL — see <a href="https://github.com/LucaL1fe/react-native-transparent-video-skia/blob/main/LICENSE" target="_blank" rel="noreferrer">LICENSE</a>).
-        Best on desktop; browser memory limits apply to very large files.
+        Best on desktop; browser memory limits apply to very large files. For huge files (or if a
+        conversion fails) use the identical cross-platform CLI:
+        <code>npx pack-alpha-video input.mov</code> — Windows/macOS/Linux, needs Node.js + ffmpeg.
       </p>
     </footer>
   </body>

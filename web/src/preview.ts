@@ -37,6 +37,10 @@ export function startPreview(canvas: HTMLCanvasElement, packedMp4: Uint8Array): 
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
+  // Must be in the DOM (not display:none) or the browser may never present
+  // frames, leaving the GL texture empty. Park it offscreen instead.
+  video.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+  document.body.appendChild(video);
 
   const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true });
   if (!gl) throw new Error('WebGL2 not available — cannot show the preview');
@@ -82,7 +86,7 @@ export function startPreview(canvas: HTMLCanvasElement, packedMp4: Uint8Array): 
 
   const draw = () => {
     if (stopped) return;
-    if (video.videoWidth > 0) {
+    if (video.videoWidth > 0 && video.readyState >= 2) {
       if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight / 2) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight / 2; // display half: unpacked height
@@ -97,25 +101,26 @@ export function startPreview(canvas: HTMLCanvasElement, packedMp4: Uint8Array): 
     schedule();
   };
 
+  // Plain rAF loop: requestVideoFrameCallback stalls for offscreen videos in
+  // some browsers, and re-uploading a small frame at display rate is cheap.
   const schedule = () => {
     if (stopped) return;
-    if ('requestVideoFrameCallback' in video) {
-      (video as HTMLVideoElement).requestVideoFrameCallback(() => draw());
-    } else {
-      requestAnimationFrame(draw);
-    }
+    requestAnimationFrame(draw);
   };
 
   video.play().catch(() => {
     /* autoplay may need a user gesture; the result view is reached by click */
   });
   schedule();
+  // Debug handle for automated tests.
+  (globalThis as Record<string, unknown>).__previewVideo = video;
 
   return {
     stop() {
       stopped = true;
       video.pause();
       video.src = '';
+      video.remove();
       URL.revokeObjectURL(url);
     },
   };

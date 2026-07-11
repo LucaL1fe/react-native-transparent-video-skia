@@ -36,25 +36,37 @@ export interface ProbeResult {
 
 // Mirrors the pack-alpha-video CLI's ffprobe preflight, plus WebM alpha_mode
 // detection (VP8/VP9 alpha is a container tag, not part of pix_fmt).
+// Implemented by parsing `ffmpeg -i` log output rather than ffmpeg.ffprobe():
+// running ffprobe on the shared core instance leaves it in a state where the
+// next exec() aborts (observed with @ffmpeg/core-mt 0.12.10).
 export async function probe(ffmpeg: FFmpeg, inName: string): Promise<ProbeResult> {
-  await ffmpeg.ffprobe([
-    '-v', 'error', '-select_streams', 'v:0',
-    '-show_entries',
-    'stream=codec_name,pix_fmt,width,height:stream_tags=alpha_mode:format=duration',
-    '-of', 'json', inName, '-o', 'probe.json',
-  ]);
-  const raw = (await ffmpeg.readFile('probe.json')) as Uint8Array;
-  const j = JSON.parse(new TextDecoder().decode(raw));
-  const s = j.streams?.[0] ?? {};
-  const pixFmt: string = s.pix_fmt ?? '';
-  const codec: string = s.codec_name ?? '';
-  const vp9Alpha = ['vp8', 'vp9'].includes(codec) && s.tags?.alpha_mode === '1';
+  const logs: string[] = [];
+  const onLog = ({ message }: { message: string }) => logs.push(message);
+  ffmpeg.on('log', onLog);
+  try {
+    // Exits non-zero ("At least one output file must be specified") — the
+    // stream metadata we need is in the log output.
+    await ffmpeg.exec(['-hide_banner', '-i', inName]);
+  } catch {
+    /* expected */
+  } finally {
+    ffmpeg.off('log', onLog);
+  }
+  const text = logs.join('\n');
+
+  const stream = text.match(
+    /Stream #\d+:\d+.*?: Video: (\w+)[^,]*, ([a-z0-9]+)[^,(]*(?:\([^)]*\))?, (\d+)x(\d+)/
+  );
+  const dur = text.match(/Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/);
+  const codec = stream?.[1] ?? '';
+  const pixFmt = stream?.[2] ?? '';
+  const vp9Alpha = ['vp8', 'vp9'].includes(codec) && /alpha_mode\s*:\s*1/.test(text);
   return {
     pixFmt,
     codec,
-    width: s.width ?? 0,
-    height: s.height ?? 0,
-    duration: parseFloat(j.format?.duration ?? '0') || 0,
+    width: stream ? Number(stream[3]) : 0,
+    height: stream ? Number(stream[4]) : 0,
+    duration: dur ? Number(dur[1]) * 3600 + Number(dur[2]) * 60 + Number(dur[3]) : 0,
     hasAlpha: pixFmt.includes('a') || vp9Alpha,
     vp9Alpha,
   };
@@ -74,6 +86,19 @@ export async function writeInput(ffmpeg: FFmpeg, file: File): Promise<string> {
   const inName = 'input' + (dot >= 0 ? file.name.slice(dot) : '.mov');
   await ffmpeg.writeFile(inName, await fetchFile(file));
   return inName;
+}
+
+// The MT core's pthread pool is sized to navigator.hardwareConcurrency. With
+// ffmpeg's defaults every stage (decoder, filter graph, x264) asks for ~cores
+// threads each — the pool is exhausted and thread creation blocks forever
+// (x264 alone wants 1.5×cores). Budget explicit per-stage thread counts that
+// fit the pool together. Harmless on the single-threaded core.
+function threadBudget(): { decode: number; filter: number; encode: number } {
+  const pool = Math.max(2, (navigator.hardwareConcurrency || 4) - 2);
+  const encode = Math.min(4, Math.max(1, Math.floor(pool / 2)));
+  const decode = Math.min(4, Math.max(1, Math.floor(pool / 4)));
+  const filter = Math.min(2, Math.max(1, pool - encode - decode));
+  return { decode, filter, encode };
 }
 
 export async function pack(
@@ -105,13 +130,18 @@ export async function pack(
   };
   ffmpeg.on('progress', onProg);
   ffmpeg.on('log', onLog);
+  const threads = threadBudget();
   try {
     const code = await ffmpeg.exec([
+      '-y',
+      '-filter_complex_threads', String(threads.filter),
+      '-threads', String(threads.decode),
       // The native vp9 decoder ignores alpha; libvpx-vp9 (before -i) decodes it.
       ...(probed.vp9Alpha ? ['-c:v', probed.codec === 'vp8' ? 'libvpx' : 'libvpx-vp9'] : []),
       '-i', inName,
       '-filter_complex', filter,
-      '-c:v', 'libx264', '-crf', String(opts.crf), '-pix_fmt', 'yuv420p',
+      '-c:v', 'libx264', '-threads', String(threads.encode),
+      '-crf', String(opts.crf), '-pix_fmt', 'yuv420p',
       '-movflags', '+faststart', '-an',
       'out.mp4',
     ]);
@@ -120,7 +150,7 @@ export async function pack(
   } finally {
     ffmpeg.off('progress', onProg);
     ffmpeg.off('log', onLog);
-    await cleanup(ffmpeg, [inName, 'out.mp4', 'probe.json']);
+    await cleanup(ffmpeg, [inName, 'out.mp4']);
   }
 }
 

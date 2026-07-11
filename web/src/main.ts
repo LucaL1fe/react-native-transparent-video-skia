@@ -52,6 +52,18 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+// The npm package ships the same conversion as a cross-platform Node CLI
+// (Windows/macOS/Linux, needs ffmpeg in PATH) — offered as the fallback
+// whenever the in-browser conversion can't handle a file.
+function localFallback(fileName: string): string {
+  const flags =
+    ` --fps ${fps} --crf ${crf}` + (probed && outWidth !== evenWidth(probed.width) ? ` --width ${outWidth}` : '');
+  return (
+    `\n\n💻 Local fallback (works on Windows, macOS and Linux — needs Node.js + ffmpeg):\n` +
+    `npx pack-alpha-video "${fileName}"${flags}`
+  );
+}
+
 function showError(text: string): void {
   const banner = el('error-banner');
   banner.textContent = text;
@@ -74,7 +86,7 @@ async function resetToDrop(): Promise<void> {
     currentInName = null;
     try {
       const { ffmpeg } = await enginePromise;
-      await cleanup(ffmpeg, [name, 'probe.json']);
+      await cleanup(ffmpeg, [name]);
     } catch {
       /* engine may be gone */
     }
@@ -106,7 +118,8 @@ async function onFile(file: File): Promise<void> {
   if (file.size > BLOCK_BYTES) {
     showError(
       `${file.name} is ${formatBytes(file.size)} — too large for in-browser conversion ` +
-        `(wasm memory is capped at ~2 GB). Trim the clip or export at display resolution first.`
+        `(wasm memory is capped at ~2 GB). Trim the clip or export at display resolution first.` +
+        localFallback(file.name)
     );
     return;
   }
@@ -229,7 +242,8 @@ async function convert(): Promise<void> {
   } catch (e) {
     showError(
       `Conversion failed: ${message(e)}. ` +
-        `If this was a memory error, try a smaller width or a shorter clip.`
+        `If this was a memory error, try a smaller width or a shorter clip.` +
+        localFallback(file.name)
     );
     await recycleEngine();
     await resetToDrop();

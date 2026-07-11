@@ -4,3 +4,6 @@ lib/
 *.log
 .DS_Store
 *.local
+
+# never commit credentials
+npm_recovery_codes.txt

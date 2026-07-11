@@ -1,5 +1,7 @@
 # react-native-transparent-video-skia
 
+> ⭐ **If this project helps you, a star would make my day** — it keeps the project going and helps others find it!
+
 **Transparent (alpha-channel) video for React Native — as a plain H.264 MP4 that plays on every iOS and Android hardware decoder.**
 
 No codec-alpha support needed, no giant animated WebP/GIF files, no per-frame CPU decoding. A ~70-line Skia component plays an "alpha-packed" MP4 and recombines color + alpha on the GPU.
@@ -108,7 +110,7 @@ npx pack-alpha-video <input-with-alpha.mov> [more ...] [options]
       --width <px>      downscale width, keeps aspect
 ```
 
-Requires ffmpeg (`brew install ffmpeg`). Or skip the install entirely and use the [browser converter](https://lucal1fe.github.io/react-native-transparent-video-skia/) — it runs the same ffmpeg pipeline via WebAssembly, entirely client-side.
+Runs on **Windows, macOS and Linux** — needs Node.js and ffmpeg in your PATH (macOS: `brew install ffmpeg`, Windows: `winget install ffmpeg`, Linux: `apt install ffmpeg`). Or skip the install entirely and use the [browser converter](https://lucal1fe.github.io/react-native-transparent-video-skia/) — it runs the same ffmpeg pipeline via WebAssembly, entirely client-side. The CLI is the recommended fallback for very large files that exceed the browser's wasm memory limit.
 
 ## Repo layout
 
