@@ -28,9 +28,9 @@
  * Output: <out-dir>/<name>-packed.mp4 (a trailing "-4444" is stripped from
  * the name). Prints the <TransparentVideo> line to paste into your app.
  *
- * DaVinci export settings for the input file:
- *   Deliver → QuickTime, Codec "Apple ProRes 4444", ✅ Export Alpha,
- *   resolution = display size (e.g. 900×900), 24–30 fps.
+ * Recommended source export (any editor/motion tool): QuickTime with
+ * "Apple ProRes 4444" and the alpha channel enabled, at display resolution
+ * (e.g. 900×900), 24–30 fps.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
