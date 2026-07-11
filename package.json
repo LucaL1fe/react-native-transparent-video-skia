@@ -1,5 +1,5 @@
 {
-  "name": "react-native-transparent-video-skia-monorepo",
+  "name": "react-native-transparent-video-player-monorepo",
   "private": true,
   "workspaces": [
     "packages/*"

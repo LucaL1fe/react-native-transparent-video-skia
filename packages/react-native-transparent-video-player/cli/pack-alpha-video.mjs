@@ -25,6 +25,11 @@
  *                          scales to fit and pads with TRANSPARENT pixels
  *       --crf <n>          advanced: raw x264 CRF, overrides --quality
  *
+ * The output height must be divisible by 8 (packed height by 16) — Android
+ * hardware decoders align buffers to 16 rows, and non-aligned packed videos
+ * get a crop transform that shifts the alpha mask ~1px against the color.
+ * The CLI refuses misaligned resolutions and suggests the nearest valid one.
+ *
  * Output: <out-dir>/<name>-packed.mp4 (a trailing "-4444" is stripped from
  * the name). Prints the <TransparentVideo> line to paste into your app.
  *
@@ -128,13 +133,16 @@ for (const input of inputs) {
   const probe = JSON.parse(
     run('ffprobe', [
       '-v', 'error', '-select_streams', 'v:0',
-      '-show_entries', 'stream=codec_name,pix_fmt:stream_tags=alpha_mode',
+      '-show_entries', 'stream=codec_name,pix_fmt,width,height:stream_tags=alpha_mode',
       '-of', 'json', input,
     ])
   );
   const stream = probe.streams?.[0] ?? {};
   const pixFmt = stream.pix_fmt ?? '';
   const codec = stream.codec_name ?? '';
+  const srcW = Number(stream.width);
+  const srcH = Number(stream.height);
+  if (!srcW || !srcH) fail(`${path.basename(input)}: could not read video dimensions`);
   const vpxAlpha = ['vp8', 'vp9'].includes(codec) && stream.tags?.alpha_mode === '1';
   if (!pixFmt.includes('a') && !vpxAlpha) {
     fail(
@@ -158,14 +166,57 @@ for (const input of inputs) {
   //  --width: exact width, height follows aspect
   //  --scale: percentage of source
   //  default: no-op even-ing pass (yuv420p + vstack need even dimensions)
+  const even = (n) => Math.round(n / 2) * 2;
+  let outW;
+  let outH;
+  if (sizeW) {
+    outW = sizeW;
+    outH = sizeH;
+  } else if (values.width) {
+    outW = even(Number(values.width));
+    outH = even((srcH * outW) / srcW);
+  } else {
+    outW = even((srcW * scalePct) / 100 - 0.49);
+    outH = even((srcH * outW) / srcW);
+  }
+
+  // The output height MUST be divisible by 8 (packed = 2x → divisible by 16):
+  // Android hardware decoders align video buffers to 16 rows, and a
+  // non-aligned packed video forces a crop transform whose filtering inset
+  // shifts the alpha mask ~1px against the color on every Android device.
+  if (outH % 8 !== 0) {
+    let fix;
+    if (sizeW) {
+      const lo = Math.floor(outH / 8) * 8;
+      const hi = lo + 8;
+      fix = `use --size ${outW}x${lo}${lo > 0 ? '' : ''} or --size ${outW}x${hi}`;
+    } else {
+      const candidates = [];
+      for (let d = 2; d <= 128 && candidates.length < 2; d += 2) {
+        for (const w of [outW - d, outW + d]) {
+          if (w > 0 && even((srcH * w) / srcW) % 8 === 0 && !candidates.includes(w)) {
+            candidates.push(w);
+          }
+        }
+      }
+      candidates.sort((a, b) => Math.abs(a - outW) - Math.abs(b - outW));
+      fix = candidates.length
+        ? `use ${candidates.map((w) => `--width ${w}`).join(' or ')}`
+        : 'pick a resolution whose height is divisible by 8 (e.g. via --size)';
+    }
+    fail(
+      `${path.basename(input)}: output ${outW}x${outH} — height ${outH} is not divisible by 8.\n` +
+        '  Why: Android hardware decoders align video buffers to 16 rows; a packed video\n' +
+        '  whose height is not 16-aligned gets a crop transform that shifts the alpha mask\n' +
+        '  ~1px against the color on every Android device.\n' +
+        `  Fix: ${fix}  (source is ${srcW}x${srcH})`
+    );
+  }
+
   const resize = sizeW
     ? `scale=${sizeW}:${sizeH}:force_original_aspect_ratio=decrease:force_divisible_by=2,` +
       `pad=${sizeW}:${sizeH}:(ow-iw)/2:(oh-ih)/2:color=black@0,`
-    : values.width
-      ? `scale=${values.width}:-2,`
-      : scalePct !== 100
-        ? `scale=trunc(iw*${scalePct / 100}/2)*2:-2,`
-        : 'scale=trunc(iw/2)*2:-2,';
+    : `scale=${outW}:${outH},`;
 
   // fps → resize → premultiply color by alpha (kills edge fringe when the
   // shader samples with bilinear filtering) → split → alphaextract paints the

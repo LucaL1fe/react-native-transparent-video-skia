@@ -1,4 +1,4 @@
-# react-native-transparent-video-skia
+# react-native-transparent-video-player
 
 > ⭐ **If this project helps you, a star would make my day** — it keeps the project going and helps others find it!
 
@@ -18,13 +18,13 @@ npx pack-alpha-video hero-4444.mov
 **2. Install:**
 
 ```bash
-npx expo install react-native-transparent-video-skia @shopify/react-native-skia react-native-reanimated
+npx expo install react-native-transparent-video-player @shopify/react-native-skia react-native-reanimated
 ```
 
 **3. Play it:**
 
 ```tsx
-import { TransparentVideo } from 'react-native-transparent-video-skia';
+import { TransparentVideo } from 'react-native-transparent-video-player';
 
 <TransparentVideo
   source={require('./assets/hero-packed.mp4')}
@@ -62,6 +62,8 @@ npx pack-alpha-video <input-with-alpha> [more inputs ...] [options]
 
 **Requirements:** Node.js and ffmpeg in your PATH — works on **Windows, macOS and Linux**
 (macOS: `brew install ffmpeg` · Windows: `winget install ffmpeg` · Linux: `sudo apt install ffmpeg`).
+
+**Resolution rule:** the output height must be divisible by 8 (the packed file by 16). Android hardware decoders align video buffers to 16 rows — a non-aligned packed video gets a crop transform that shifts the alpha mask ~1px against the color. The CLI enforces this and tells you the nearest valid resolution (e.g. `--width 900` → "use `--width 896` or `--width 904`").
 
 ## Why this beats GIF and animated WebP
 
@@ -129,6 +131,10 @@ Because the transport is plain `yuv420p` H.264, the OS hardware decoder does all
 | `onEnd` | `() => void` | Fires when a non-looping video finishes. Currently Android-only (native player event). |
 | `style` | `StyleProp<ViewStyle>` | Extra styles for the view. |
 
+## Renamed package
+
+This project was previously published as `react-native-transparent-video-skia` (≤ 0.2.0, iOS/Skia-only playback). It was renamed when Android playback moved to a native ExoPlayer + OpenGL view — Skia now only powers the iOS side.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — Android GL/renderer code derived from [alpha-movie](https://github.com/pavelsiamak/alpha-movie) (Apache-2.0) and [react-native-transparent-video](https://github.com/status-im/react-native-transparent-video) (MIT), see `THIRD-PARTY-NOTICES.md`.

@@ -1,13 +1,13 @@
-# react-native-transparent-video-skia
+# react-native-transparent-video-player
 
 Transparent (alpha-channel) video for React Native — as a plain H.264 MP4 that plays on every iOS and Android hardware decoder.
 
 ```bash
-npx expo install react-native-transparent-video-skia @shopify/react-native-skia react-native-reanimated
+npx expo install react-native-transparent-video-player @shopify/react-native-skia react-native-reanimated
 ```
 
 ```tsx
-import { TransparentVideo } from 'react-native-transparent-video-skia';
+import { TransparentVideo } from 'react-native-transparent-video-player';
 
 <TransparentVideo
   source={require('./assets/hero-packed.mp4')}
@@ -26,4 +26,4 @@ npx pack-alpha-video hero-4444.mov --scale 50 --quality 60
 Renders via Skia on iOS and a native ExoPlayer + OpenGL view on Android (v0.3.0+) — no `minSdkVersion` override needed. Android needs `expo-modules-core` (built into every Expo app; bare RN: `npx install-expo-modules`).
 
 Full docs, CLI options, format explanation, and the GIF/WebP comparison:
-**https://github.com/LucaL1fe/react-native-transparent-video-skia**
+**https://github.com/LucaL1fe/react-native-transparent-video-player**

@@ -1,15 +1,15 @@
 {
-  "name": "react-native-transparent-video-skia",
+  "name": "react-native-transparent-video-player",
   "version": "0.3.0",
   "description": "Transparent (alpha) video playback for React Native \u2014 plays alpha-packed H.264 MP4s on every iOS/Android hardware decoder. Skia-rendered on iOS, native ExoPlayer+OpenGL view on Android. Includes a CLI to pack ProRes 4444 exports.",
   "license": "MIT",
   "author": "LucaL1fe",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LucaL1fe/react-native-transparent-video-skia.git",
-    "directory": "packages/react-native-transparent-video-skia"
+    "url": "git+https://github.com/LucaL1fe/react-native-transparent-video-player.git",
+    "directory": "packages/react-native-transparent-video-player"
   },
-  "homepage": "https://github.com/LucaL1fe/react-native-transparent-video-skia",
+  "homepage": "https://github.com/LucaL1fe/react-native-transparent-video-player",
   "keywords": [
     "react-native",
     "expo",
