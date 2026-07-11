@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * pack-alpha-video — convert any video with an alpha channel (DaVinci ProRes
- * 4444 exports, VP9/VP8 WebM, PNG/QTRLE/FFV1/Ut Video in .mov/.mkv/.avi)
- * into an "alpha-packed" MP4 for <TransparentVideo>.
+ * pack-alpha-video — convert any video with an alpha channel (ProRes 4444,
+ * VP9/VP8 WebM, PNG/QTRLE/FFV1/Ut Video in .mov/.mkv/.avi) into an
+ * "alpha-packed" MP4 for <TransparentVideo>.
  *
  * The trick: the output MP4 is a completely normal H.264 video, twice as tall
  * as the source. Top half = the color image (premultiplied), bottom half = the
@@ -139,7 +139,7 @@ for (const input of inputs) {
   if (!pixFmt.includes('a') && !vpxAlpha) {
     fail(
       `${path.basename(input)} has no alpha channel (codec: ${codec}, pix_fmt: ${pixFmt}).\n` +
-      '  From DaVinci: Deliver → QuickTime + ProRes 4444 + ✅ Export Alpha.\n' +
+      '  Re-export as ProRes 4444 with the alpha channel enabled (every editor/motion tool supports this).\n' +
       '  (Plain H.264/HEVC exports have no alpha; HEVC-with-alpha is not supported — use ProRes 4444 or VP9 WebM.)'
     );
   }

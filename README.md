@@ -8,7 +8,7 @@ No codec-alpha support needed, no giant animated WebP/GIF files, no per-frame CP
 
 ## Quick start
 
-**1. Pack your video** — works with any video that has an alpha channel and any resolution (ffmpeg required, see below):
+**1. Pack your video** — any video with an alpha channel (e.g. ProRes 4444), any resolution (ffmpeg required, see below):
 
 ```bash
 npx pack-alpha-video hero-4444.mov
@@ -35,7 +35,7 @@ import { TransparentVideo } from 'react-native-transparent-video-skia';
 
 That's it — the video renders with real transparency over whatever is behind it.
 
-> **Exporting from DaVinci Resolve:** Deliver → QuickTime, Codec **Apple ProRes 4444**, ✅ **Export Alpha**, resolution = display size (e.g. 900×900), 24–30 fps.
+> **Export tip:** deliver **ProRes 4444 with the alpha channel enabled** from your editor or motion tool, at display resolution (e.g. 900×900), 24–30 fps. Every professional tool can do this.
 
 ## The `pack-alpha-video` CLI
 
@@ -55,7 +55,7 @@ npx pack-alpha-video <input-with-alpha> [more inputs ...] [options]
 
 **Supported inputs** — any video with a real alpha channel, at any resolution (odd dimensions are handled automatically):
 
-- **ProRes 4444** `.mov` (the DaVinci Resolve / After Effects route — recommended)
+- **ProRes 4444** `.mov` with alpha channel (recommended — every editor/motion tool exports this)
 - **VP9 / VP8** `.webm` with alpha
 - `.mov`/`.mkv`/`.avi` with an alpha-capable codec: **PNG, QuickTime Animation (QTRLE), FFV1, Ut Video**
 - Files *without* alpha (plain H.264/HEVC exports) are rejected with a clear message — note that HEVC-with-alpha is not supported; use ProRes 4444 or VP9 WebM instead.

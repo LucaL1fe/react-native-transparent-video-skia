@@ -16,7 +16,7 @@ import { TransparentVideo } from 'react-native-transparent-video-skia';
 />
 ```
 
-Pack any alpha video (DaVinci ProRes 4444 export, VP9 WebM, …) with the bundled cross-platform CLI (needs ffmpeg in PATH):
+Pack any video with an alpha channel (ProRes 4444, VP9 WebM, …) with the bundled cross-platform CLI (needs ffmpeg in PATH):
 
 ```bash
 npx pack-alpha-video hero-4444.mov            # sensible defaults: 24 fps, quality 75%
