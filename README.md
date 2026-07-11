@@ -105,8 +105,8 @@ Because the transport is plain `yuv420p` H.264, the OS hardware decoder does all
 ```
 npx pack-alpha-video <input-with-alpha.mov> [more ...] [options]
   -o, --out-dir <dir>   output directory        (default: cwd)
-      --fps <n>         output frame rate       (default: 30)
-      --crf <n>         H.264 quality           (default: 18, lower = better)
+      --fps <n>         output frame rate       (default: 24 — smooth for animations, smaller than 30)
+      --crf <n>         H.264 quality           (default: 18 = visually lossless, lower = better)
       --width <px>      downscale width, keeps aspect
 ```
 

@@ -26,7 +26,7 @@ let downloadUrl: string | null = null;
 
 // Settings state
 let outWidth = 0;
-let fps = 30;
+let fps = 24;
 let crf = 18;
 
 function getEngine(): Promise<Engine> {
@@ -192,7 +192,7 @@ function renderSettings(): void {
 
   renderChips(
     el('fps-presets'),
-    [30, 24, 15].map((v) => ({ label: `${v} fps`, value: v })),
+    [30, 24, 15].map((v) => ({ label: `${v} fps`, value: v, detail: v === 24 ? 'recommended' : undefined })),
     fps,
     (v) => {
       fps = v;

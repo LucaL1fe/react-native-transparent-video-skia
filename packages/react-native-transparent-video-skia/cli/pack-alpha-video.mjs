@@ -14,7 +14,7 @@
  *
  * Options:
  *   -o, --out-dir <dir>  output directory                    (default: cwd)
- *       --fps <n>        frame rate of the packed output     (default: 30)
+ *       --fps <n>        frame rate of the packed output     (default: 24)
  *       --crf <n>        H.264 quality, lower = better/bigger (default: 18)
  *       --width <px>     downscale to this width, keeps aspect (default: source width)
  *
@@ -46,7 +46,7 @@ try {
     allowPositionals: true,
     options: {
       'out-dir': { type: 'string', short: 'o', default: process.cwd() },
-      fps: { type: 'string', default: '30' },
+      fps: { type: 'string', default: '24' },
       crf: { type: 'string', default: '18' },
       width: { type: 'string', default: '' },
       help: { type: 'boolean', short: 'h', default: false },
@@ -59,7 +59,7 @@ const { values, positionals: inputs } = parsed;
 
 if (values.help || inputs.length === 0) {
   console.log(
-    'Usage: pack-alpha-video <input-with-alpha.mov> [...] [-o outDir] [--fps 30] [--crf 18] [--width 900]'
+    'Usage: pack-alpha-video <input-with-alpha.mov> [...] [-o outDir] [--fps 24] [--crf 18] [--width 900]'
   );
   process.exit(values.help ? 0 : 1);
 }
