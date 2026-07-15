@@ -1,6 +1,8 @@
 node_modules/
 dist/
-lib/
+# compiled TS output only — a bare "lib/" would also ignore
+# android/src/main/java/com/alphamovie/lib/ (GLTextureView.java)
+packages/*/lib/
 *.log
 .DS_Store
 *.local

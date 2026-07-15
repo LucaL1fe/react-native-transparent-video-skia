@@ -152,16 +152,10 @@ class TransparentVideoRenderer : GLTextureView.Renderer {
     GLES20.glViewport(0, 0, width, height)
   }
 
-  // GLTextureView extension over stock GLSurfaceView.Renderer: called on the
-  // GL thread when the EGL surface goes away (view detach). The SurfaceTexture
-  // belongs to the dying GL context; a fresh one is created in the next
-  // onSurfaceCreated and re-handed to the player via onSurfaceReady.
-  override fun onSurfaceDestroyed(gl: GL10?) {
-    synchronized(frameLock) { frameAvailable = false }
-    surfaceTexture?.release()
-    surfaceTexture = null
-  }
-
+  // NOTE: there is deliberately no surface-destroyed callback. GLTextureView
+  // never signals EGL teardown to the renderer; the stale SurfaceTexture from
+  // a dead context is released by the next onSurfaceCreated (or release()),
+  // and the host detaches the player from it in onDetachedFromWindow.
   override fun onDrawFrame(gl: GL10?) {
     synchronized(frameLock) {
       if (frameAvailable) {

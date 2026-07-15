@@ -278,8 +278,16 @@ final class TransparentVideoView: ExpoView {
   override func didMoveToWindow() {
     super.didMoveToWindow()
     if window != nil {
-      // Reattach (tab switch, list recycle): drawables may be gone.
+      // Reattach (tab switch, list recycle, screen uncovered): drawables may
+      // be gone.
       renderer.redrawLastFrame(into: metalLayer)
+      // Mirror handleDidBecomeActive: AVFoundation can drop the rate of a
+      // video-only item while we're off-window (e.g. react-native-screens
+      // detaches us under a covering card); redrawing alone would leave the
+      // clip frozen on its last frame.
+      if !paused && !endedNonLooping {
+        player?.play()
+      }
     }
     updateDisplayLinkState()
   }

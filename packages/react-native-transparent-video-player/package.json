@@ -1,6 +1,6 @@
 {
   "name": "react-native-transparent-video-player",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Transparent (alpha) video playback for React Native — plays alpha-packed H.264 MP4s on every iOS/Android hardware decoder. Native AVPlayer+Metal view on iOS, native ExoPlayer+OpenGL view on Android, Skia on web. Includes a CLI to pack ProRes 4444 exports.",
   "license": "MIT",
   "author": "LucaL1fe",

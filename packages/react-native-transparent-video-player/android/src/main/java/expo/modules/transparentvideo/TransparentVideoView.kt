@@ -1,9 +1,11 @@
 package expo.modules.transparentvideo
 
 import android.content.Context
+import android.util.Log
 import android.view.Surface
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import expo.modules.kotlin.AppContext
@@ -111,6 +113,13 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
         override fun onRenderedFirstFrame() {
           onFirstFrame(mapOf())
         }
+
+        // Log only — recovery happens in attachSurfaceAndMaybePrepare(),
+        // which re-prepares an IDLE player on the next surface rebind.
+        // Auto-prepare() here could loop on a persistent decoder failure.
+        override fun onPlayerError(error: PlaybackException) {
+          Log.e("TransparentVideo", "ExoPlayer error (state=${player?.playbackState})", error)
+        }
       })
       player = built
     }
@@ -119,8 +128,30 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
     if (p.currentMediaItem?.localConfiguration?.uri?.toString() != uri) {
       p.setMediaItem(MediaItem.fromUri(uri))
       p.prepare()
+    } else if (p.playbackState == Player.STATE_IDLE) {
+      // Player errored (decoder killed by a surface abandoned mid-decode,
+      // OEM codec reclaim while covered, ...) but kept its media item —
+      // re-prepare on the surface rebind. STATE_ENDED is deliberately left
+      // alone so finished non-looping clips keep holding their last frame.
+      p.prepare()
     }
     p.playWhenReady = !paused
+  }
+
+  // Called when react-native-screens (or any parent) detaches us while a
+  // covering screen is shown. Children (GLTextureView) detach before this
+  // runs, so the GL thread is already gone — but the decoder SurfaceTexture
+  // is only released later, by the NEXT onSurfaceCreated on reattach.
+  // Detach the player from it now and stop decoding into a surface nobody
+  // consumes; otherwise MediaCodec races the GL-thread release on reattach
+  // and dies (0xffffffed on Qualcomm), stranding the player in IDLE.
+  // Only player.playWhenReady is touched (not the `paused` prop field):
+  // reattach recreates EGL → onSurfaceReady → attachSurfaceAndMaybePrepare()
+  // restores playWhenReady = !paused.
+  override fun onDetachedFromWindow() {
+    player?.clearVideoSurface()
+    player?.playWhenReady = false
+    super.onDetachedFromWindow()
   }
 
   // Called from OnViewDestroys (main thread) when RN destroys the view for
