@@ -28,4 +28,18 @@ export interface ImplProps {
    * playback by itself.
    */
   playKey?: number;
+  /**
+   * Playback/decoder failure. Android only for now (ExoPlayer errors; the
+   * native view auto-retries with backoff up to 3 times — `willRetry` is
+   * false on the final, given-up attempt). Never fires on iOS or web.
+   */
+  onError?: (error: TransparentVideoError) => void;
+}
+
+export interface TransparentVideoError {
+  /** ExoPlayer errorCodeName, e.g. "ERROR_CODE_DECODING_FAILED". */
+  code: string;
+  message: string;
+  /** False once the bounded auto-retry is exhausted — the view stays blank. */
+  willRetry: boolean;
 }

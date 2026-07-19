@@ -5,7 +5,9 @@ public class TransparentVideoModule: Module {
     Name("TransparentVideo")
 
     View(TransparentVideoView.self) {
-      Events("onVideoEnd", "onFirstFrame")
+      // onError currently fires only on Android (decoder failures, with
+      // bounded auto-retry); registered on iOS so the prop is valid there.
+      Events("onVideoEnd", "onFirstFrame", "onError")
 
       // Prop setters only STAGE values; side effects run in commitProps()
       // (OnViewDidUpdateProps) so replayNonce is always evaluated after

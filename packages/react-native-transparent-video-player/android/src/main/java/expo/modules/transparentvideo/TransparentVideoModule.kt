@@ -8,7 +8,7 @@ class TransparentVideoModule : Module() {
     Name("TransparentVideo")
 
     View(TransparentVideoView::class) {
-      Events("onVideoEnd", "onFirstFrame")
+      Events("onVideoEnd", "onFirstFrame", "onError")
 
       Prop("sourceUri") { view: TransparentVideoView, uri: String? ->
         view.setSource(uri)

@@ -4,7 +4,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { runOnJS, useAnimatedReaction } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 
-import type { ImplProps } from './types';
+import type { ImplProps, TransparentVideoError } from './types';
 
 interface NativeProps {
   sourceUri: string | null;
@@ -13,6 +13,7 @@ interface NativeProps {
   replayNonce?: number;
   onVideoEnd?: () => void;
   onFirstFrame?: () => void;
+  onError?: (event: { nativeEvent: TransparentVideoError }) => void;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -56,6 +57,7 @@ export function TransparentVideoView({
   onEnd,
   onFirstFrame,
   playKey,
+  onError,
 }: ImplProps) {
   const pausedBool = useResolvedPaused(paused);
 
@@ -67,6 +69,7 @@ export function TransparentVideoView({
       replayNonce={playKey}
       onVideoEnd={onEnd}
       onFirstFrame={onFirstFrame}
+      onError={onError ? (e) => onError(e.nativeEvent) : undefined}
       style={[{ width, height }, style]}
     />
   );

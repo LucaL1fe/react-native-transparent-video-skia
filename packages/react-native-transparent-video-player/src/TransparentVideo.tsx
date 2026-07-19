@@ -4,6 +4,7 @@ import type { SharedValue } from 'react-native-reanimated';
 
 import { TransparentVideoView } from './TransparentVideoView';
 import { useResolvedUri } from './useResolvedUri';
+import type { TransparentVideoError } from './types';
 
 export interface TransparentVideoProps {
   /**
@@ -40,6 +41,12 @@ export interface TransparentVideoProps {
    * are seamless.
    */
   playKey?: number;
+  /**
+   * Playback/decoder failure. Android only for now (ExoPlayer errors; the
+   * native view auto-retries with backoff up to 3 times — `willRetry` is
+   * false on the final, given-up attempt). Never fires on iOS or web.
+   */
+  onError?: (error: TransparentVideoError) => void;
 }
 
 /**
@@ -60,6 +67,7 @@ export function TransparentVideo({
   onEnd,
   onFirstFrame,
   playKey,
+  onError,
 }: TransparentVideoProps) {
   const { uri, forSource } = useResolvedUri(source);
 
@@ -86,6 +94,7 @@ export function TransparentVideo({
       onEnd={onEnd}
       onFirstFrame={onFirstFrame}
       playKey={gatedPlayKeyRef.current}
+      onError={onError}
     />
   );
 }

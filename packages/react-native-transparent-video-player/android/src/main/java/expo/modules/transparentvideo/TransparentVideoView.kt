@@ -16,6 +16,7 @@ import com.alphamovie.lib.GLTextureView
 class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onVideoEnd by EventDispatcher()
   private val onFirstFrame by EventDispatcher()
+  private val onError by EventDispatcher()
 
   private val renderer = TransparentVideoRenderer()
   private val textureView = GLTextureView(context).apply {
@@ -30,6 +31,21 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
   private var player: ExoPlayer? = null
   private var surface: Surface? = null
   private var sourceUri: String? = null
+
+  // Bounded recovery from decoder errors (see onPlayerError). A surface
+  // rebind used to be the ONLY recovery path — but errors can land while the
+  // view stays attached (codec reclaimed under memory pressure with no
+  // detach/reattach cycle), which parked the player in IDLE forever: a
+  // looping video that never presents again. Retries are capped so a
+  // persistent decoder failure still can't loop.
+  private val errorRetryDelaysMs = longArrayOf(250, 1000, 3000)
+  private var errorRetryAttempt = 0
+  private var pendingErrorRetry: Runnable? = null
+
+  private fun cancelErrorRetry() {
+    pendingErrorRetry?.let { removeCallbacks(it) }
+    pendingErrorRetry = null
+  }
 
   var loop: Boolean = true
     set(value) {
@@ -111,14 +127,39 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
         // Fires after every prepare() — i.e. once per source, including
         // runtime source switches — when the first frame hits the surface.
         override fun onRenderedFirstFrame() {
+          errorRetryAttempt = 0
           onFirstFrame(mapOf())
         }
 
-        // Log only — recovery happens in attachSurfaceAndMaybePrepare(),
-        // which re-prepares an IDLE player on the next surface rebind.
-        // Auto-prepare() here could loop on a persistent decoder failure.
+        // Recover with capped, backed-off re-prepares. A surface rebind
+        // (attachSurfaceAndMaybePrepare re-preparing an IDLE player) also
+        // still recovers and is the faster path when a reattach happens —
+        // the retry only matters when NO rebind is coming (view stayed
+        // attached through the failure). Cap prevents looping on a
+        // persistent decoder failure.
         override fun onPlayerError(error: PlaybackException) {
           Log.e("TransparentVideo", "ExoPlayer error (state=${player?.playbackState})", error)
+          onError(mapOf(
+            "code" to error.errorCodeName,
+            "message" to (error.message ?: ""),
+            "willRetry" to (errorRetryAttempt < errorRetryDelaysMs.size),
+          ))
+          if (errorRetryAttempt >= errorRetryDelaysMs.size) return
+          val delay = errorRetryDelaysMs[errorRetryAttempt]
+          errorRetryAttempt += 1
+          cancelErrorRetry()
+          val retry = Runnable {
+            pendingErrorRetry = null
+            val p = player ?: return@Runnable
+            // Only revive a player that is still parked in IDLE — anything
+            // else means another path (rebind, source change) already did.
+            if (p.playbackState == Player.STATE_IDLE && sourceUri != null) {
+              p.prepare()
+              p.playWhenReady = !paused
+            }
+          }
+          pendingErrorRetry = retry
+          postDelayed(retry, delay)
         }
       })
       player = built
@@ -149,6 +190,9 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
   // reattach recreates EGL → onSurfaceReady → attachSurfaceAndMaybePrepare()
   // restores playWhenReady = !paused.
   override fun onDetachedFromWindow() {
+    // A pending error retry must not prepare() into the detached surface —
+    // reattach's onSurfaceReady → attachSurfaceAndMaybePrepare() recovers.
+    cancelErrorRetry()
     player?.clearVideoSurface()
     player?.playWhenReady = false
     super.onDetachedFromWindow()
@@ -159,6 +203,7 @@ class TransparentVideoView(context: Context, appContext: AppContext) : ExpoView(
   // detach/reattach cycles (lists, tab switches); only the EGL surface is
   // recreated, and onSurfaceReady re-binds it.
   fun release() {
+    cancelErrorRetry()
     player?.clearVideoSurface()
     player?.release()
     player = null
